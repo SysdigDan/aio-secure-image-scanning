@@ -32,12 +32,16 @@ PDF_DIRECTORY=""
 
 display_usage() {
 cat << EOF
-Anchore Engine Inline Analyzer --
+
+Sysdig Inline Analyzer --
+
 Script for performing analysis on local docker images, utilizing Anchore Engine analyzer subsystem.
 After image is analyzed, the resulting Anchore image archive is sent to a remote Anchore Engine installation
 using the -r <URL> option. This allows inline_analysis data to be persisted & utilized for reporting.
 Images should be built & tagged locally.
+
   Usage: ${0##*/} [ OPTIONS ] <FULL_IMAGE_TAG>
+  
     -k <TEXT>  [required] API token for Sysdig Scanning auth (ex: -k 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     -s <TEXT>  [optional] Sysdig Secure URL (ex: -s 'https://secure-sysdig.svc.cluster.local').
                If not specified, it will default to Sysdig Secure SaaS URL (https://secure.sysdig.com/).
@@ -51,6 +55,7 @@ Images should be built & tagged locally.
     -C         [optional] Delete the image from Sysdig Secure if the scan fails
     -src_creds <TEXT>  [optional] Specify registry credentials. Use USERNAME[:PASSWORD] for accessing the registry
     -auth_file <PATH>  [optional] path of the authentication file, using auth.json.
+    
 EOF
 }
 
