@@ -10,14 +10,13 @@ RUN subscription-manager config --rhsm.auto_enable_yum_plugins=0 \
 && sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/subscription-manager.conf \
 && sed -i 's/enabled=1/enabled=0/g' /etc/yum/pluginconf.d/product-id.conf
 
+# If these are done in separate commands they will create layers from which the cleanup and remove won't purge 
 RUN dnf -y install http://mirror.centos.org/centos-8/8.2.2004/BaseOS/x86_64/os/Packages/centos-gpg-keys-8.2-2.2004.0.1.el8.noarch.rpm \
-&& dnf -y install http://mirror.centos.org/centos-8/8.2.2004/BaseOS/x86_64/os/Packages/centos-repos-8.2-2.2004.0.1.el8.x86_64.rpm
-
-RUN dnf -y reinstall shadow-utils \
+&& dnf -y install http://mirror.centos.org/centos-8/8.2.2004/BaseOS/x86_64/os/Packages/centos-repos-8.2-2.2004.0.1.el8.x86_64.rpm \
+&& dnf -y reinstall shadow-utils \
 && dnf -y install fuse-overlayfs buildah \
-&& dnf -y clean all
-
-RUN rm -rf /var/cache /var/log/dnf* /var/log/yum.*
+&& dnf -y clean all \
+&& rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 
 COPY containers.conf /etc/containers/
 
