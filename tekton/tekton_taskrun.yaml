@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: sysdig-inline-scan-
+  namespace: sysdig-inline-scan
+spec:
+  serviceAccountName: sysdig-account
+  inputs:
+    params:
+      # Create a secret in the project that this pipelines runs like this:
+      # oc create secret generic sysdig-secret --from-literal secure-token="${SYSDIG_TOKEN}"
+      - name: SYSDIG_SECRET_NAME
+        value: sysdig-secret
+      - name: IMAGE_URL
+        value: sysdiglabs/dummy-vuln-app:latest
+  taskSpec:
+    params:
+      - name: IMAGE_URL
+        description: the full image url
+        default: latest
+      - name: SYSDIG_SECRET_NAME
+        description: The name of the secret that has the sysdig connection info
+    steps:
+      - name: inline-scan
+        # FIXME: Update this to the final image location
+        image: sysdigdan/aio-secure-image-scanning:dev
+        # give some extra oomph to the scanning process
+        # resources:
+        #   limits:
+        #     cpu: 1.5
+        #   requests:
+        #     cpu: 1
+        script: |
+           skopeo_image_analysis.sh -k ${SYSDIG_API_TOKEN} ${IMAGE_TAG}
+        imagePullPolicy: Always
+        env:
+        - name: IMAGE_TAG
+          value: $(inputs.params.IMAGE_URL)
+        - name: SYSDIG_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+                name: $(params.SYSDIG_SECRET_NAME)
+                key: secure-token
+  timeout: 1h0m0s
