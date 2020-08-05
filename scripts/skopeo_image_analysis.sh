@@ -32,12 +32,16 @@ PDF_DIRECTORY=""
 
 display_usage() {
 cat << EOF
-Anchore Engine Inline Analyzer --
+
+Sysdig Inline Analyzer --
+
 Script for performing analysis on local docker images, utilizing Anchore Engine analyzer subsystem.
 After image is analyzed, the resulting Anchore image archive is sent to a remote Anchore Engine installation
 using the -r <URL> option. This allows inline_analysis data to be persisted & utilized for reporting.
 Images should be built & tagged locally.
+
   Usage: ${0##*/} [ OPTIONS ] <FULL_IMAGE_TAG>
+  
     -k <TEXT>  [required] API token for Sysdig Scanning auth (ex: -k 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     -s <TEXT>  [optional] Sysdig Secure URL (ex: -s 'https://secure-sysdig.svc.cluster.local').
                If not specified, it will default to Sysdig Secure SaaS URL (https://secure.sysdig.com/).
@@ -51,6 +55,7 @@ Images should be built & tagged locally.
     -C         [optional] Delete the image from Sysdig Secure if the scan fails
     -src_creds <TEXT>  [optional] Specify registry credentials. Use USERNAME[:PASSWORD] for accessing the registry
     -auth_file <PATH>  [optional] path of the authentication file, using auth.json.
+    
 EOF
 }
 
@@ -78,7 +83,7 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':k:s:a:d:i:f:m:t:x:y:h' option; do
+  while getopts ':k:s:a:d:i:f:m:t:x:y:R:Ch' option; do
       case "${option}" in
           k  ) k_flag=true; SYSDIG_API_TOKEN="${OPTARG}";;
           s  ) s_flag=true; SYSDIG_BASE_SCANNING_URL="${OPTARG%%}";;
@@ -87,11 +92,11 @@ get_and_validate_options() {
           i  ) i_flag=true; SYSDIG_IMAGE_ID="${OPTARG}";;
           f  ) f_flag=true; DOCKERFILE="/anchore-engine/$(basename ${OPTARG})";;
           m  ) m_flag=true; MANIFEST_FILE="/anchore-engine/$(basename ${OPTARG})";;
-          R  ) R_flag=true; PDF_DIRECTORY="${OPTARG}";;
-          C  ) clean_flag=true;;
           t  ) t_flag=true; TIMEOUT="${OPTARG}";;
           x  ) x_flag=true; SRC_CREDS="${OPTARG}";;
           y  ) y_flag=true; AUTH_FILE="${OPTARG}";;
+          R  ) R_flag=true; PDF_DIRECTORY="${OPTARG}";;
+          C  ) clean_flag=true;;
           h  ) display_usage; exit;;
           \? ) printf "%s\n\n" "  Invalid option: -${OPTARG}" >&2; display_usage >&2; exit 1;;
           :  ) printf "%s\n\n%s\n\n\n" "  Option -${OPTARG} requires an argument." >&2; display_usage >&2; exit 1;;
