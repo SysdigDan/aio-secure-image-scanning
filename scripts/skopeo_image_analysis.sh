@@ -8,6 +8,7 @@ set -Eeo pipefail
 
 export TIMEOUT=${TIMEOUT:=300}
 # defaults for variables set by script options
+IMAGE_ID=""
 ANALYZE_CMD=()
 DOCKERFILE="/anchore-engine/Dockerfile"
 MANIFEST_FILE="/anchore-engine/manifest.json"
@@ -27,26 +28,20 @@ SRC_CREDS=""
 AUTH_FILE=""
 DETAIL=false
 TMP_PATH="/tmp/sysdig"
-
-if command -v sha256sum >/dev/null 2>&1; then
-  SHASUM_COMMAND="sha256sum"
-else
-  if command -v shasum >/dev/null 2>&1; then
-      SHASUM_COMMAND="shasum -a 256"
-  else
-      printf "ERROR: sha256sum or shasum command is required but missing\n"
-      exit 1
-  fi
-fi
+PDF_DIRECTORY=""
 
 display_usage() {
 cat << EOF
-Anchore Engine Inline Analyzer --
+
+Sysdig Inline Analyzer --
+
 Script for performing analysis on local docker images, utilizing Anchore Engine analyzer subsystem.
 After image is analyzed, the resulting Anchore image archive is sent to a remote Anchore Engine installation
 using the -r <URL> option. This allows inline_analysis data to be persisted & utilized for reporting.
 Images should be built & tagged locally.
+
   Usage: ${0##*/} [ OPTIONS ] <FULL_IMAGE_TAG>
+  
     -k <TEXT>  [required] API token for Sysdig Scanning auth (ex: -k 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     -s <TEXT>  [optional] Sysdig Secure URL (ex: -s 'https://secure-sysdig.svc.cluster.local').
                If not specified, it will default to Sysdig Secure SaaS URL (https://secure.sysdig.com/).
@@ -56,8 +51,11 @@ Images should be built & tagged locally.
     -i <TEXT>  [optional] Specify image ID used within Anchore Engine (ex: -i '<64 hex characters>')
     -m <PATH>  [optional] Path to Docker image manifest (ex: -m ./manifest.json)
     -t <TEXT>  [optional] Specify timeout for image analysis in seconds. Defaults to 300s. (ex: -t 500)
+    -R <PATH>  [optional] Download scan result pdf in a specified local directory (ex: -R /staging/reports)
+    -C         [optional] Delete the image from Sysdig Secure if the scan fails
     -src_creds <TEXT>  [optional] Specify registry credentials. Use USERNAME[:PASSWORD] for accessing the registry
     -auth_file <PATH>  [optional] path of the authentication file, using auth.json.
+    
 EOF
 }
 
@@ -86,7 +84,7 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':k:s:a:d:i:f:m:t:x:y:h' option; do
+  while getopts ':k:s:a:d:i:f:m:t:x:y:R:Ch' option; do
       case "${option}" in
           k  ) k_flag=true; SYSDIG_API_TOKEN="${OPTARG}";;
           s  ) s_flag=true; SYSDIG_BASE_SCANNING_URL="${OPTARG%%}";;
@@ -98,6 +96,8 @@ get_and_validate_options() {
           t  ) t_flag=true; TIMEOUT="${OPTARG}";;
           x  ) x_flag=true; SRC_CREDS="${OPTARG}";;
           y  ) y_flag=true; AUTH_FILE="${OPTARG}";;
+          R  ) R_flag=true; PDF_DIRECTORY="${OPTARG}";;
+          C  ) clean_flag=true;;
           h  ) display_usage; exit;;
           \? ) printf "%s\n\n" "  Invalid option: -${OPTARG}" >&2; display_usage >&2; exit 1;;
           :  ) printf "%s\n\n%s\n\n\n" "  Option -${OPTARG} requires an argument." >&2; display_usage >&2; exit 1;;
@@ -143,6 +143,14 @@ get_and_validate_options() {
       exit 1
   elif ([[ "${m_flag}" ]] || [[ "${d_flag}" ]]); then
       printf '%s\n\n' "ERROR - cannot specify manifest file or digest when using the -g option" >&2
+      display_usage >&2
+      exit 1
+  elif [[ "${R_flag:-}" ]] && [[ ! -d "${PDF_DIRECTORY}" ]];then
+      printf '%s\n\n' "ERROR - Directory: ${PDF_DIRECTORY} does not exist" >&2
+      display_usage >&2
+      exit 1
+  elif [[ "${R_flag:-}" ]] && [[ "${PDF_DIRECTORY: -1}" == '/' ]]; then
+      printf '%s\n\n' "ERROR - must specify file path - ${PDF_DIRECTORY} without trailing slash" >&2
       display_usage >&2
       exit 1
   fi
@@ -363,7 +371,7 @@ submit_image_analysis() {
 }
 
 get_scan_result_code() {
-GET_CALL_STATUS=$(curl -sk -o /dev/null --write-out "%{http_code}" --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" "${SYSDIG_ANCHORE_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/check?tag=${SYSDIG_FULL_IMAGE_TAG}&detail=${DETAIL}")
+  GET_CALL_STATUS=$(curl -sk -o /dev/null --write-out "%{http_code}" --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" "${SYSDIG_ANCHORE_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/check?tag=${SYSDIG_FULL_IMAGE_TAG}&detail=${DETAIL}")
 }
 
 get_scan_result_with_retries() {
@@ -401,7 +409,7 @@ get_scan_result_with_retries() {
 }
 
 print_scan_result_summary_message() {
-  if [[ ! "${V_flag-""}"  && ! "${R_flag-""}" ]]; then
+  if [[ ! "${R_flag-""}" ]]; then
       if [[ ! "${status}" = "pass" ]]; then
           echo "Result Details: "
           curl -s -k --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" "${SYSDIG_ANCHORE_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/check?tag=${SYSDIG_FULL_IMAGE_NAME}&detail=true"
@@ -416,6 +424,7 @@ print_scan_result_summary_message() {
           echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
       fi
   fi
+  printf "PDF report of the scan results can be generated with -R option.\n"
 }
 
 get_scan_result_pdf_by_digest() {
@@ -436,7 +445,7 @@ urlencode() {
 }
 
 interupt() {
-cleanup 130
+  cleanup 130
 }
 
 error() {
