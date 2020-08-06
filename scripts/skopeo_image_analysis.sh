@@ -60,7 +60,8 @@ EOF
 }
 
 main() {
-  trap 'cleanup' EXIT ERR SIGTERM
+  trap 'error' ERR
+  trap 'cleanup' EXIT SIGTERM
   trap 'interupt' SIGINT
 
   get_and_validate_options "$@"
@@ -117,7 +118,7 @@ get_and_validate_options() {
 
   # Check for invalid options
   if [[ ! $(which skopeo) ]]; then
-      printf '%s\n\n' 'ERROR - buildah is not installed or cannot be found in $PATH' >&2
+      printf '%s\n\n' 'ERROR - skopeo is not installed or cannot be found in $PATH' >&2
       display_usage >&2
       exit 1
   elif [[ "${#@}" -gt 1 ]]; then
@@ -447,17 +448,22 @@ interupt() {
   cleanup 130
 }
 
+error() {
+  local ret=$?
+  echo "[$0] An error occured during the execution of the script"
+  cleanup ${ret}
+}
+
 cleanup() {
-  local ret="$?"
-  if [[ "${#@}" -ge 1 ]]; then
-      local ret="$1"
-  fi
+  local ret="${1:-${?}}"
+
   set +e
 
   echo "Removing temporary folder created ${TMP_PATH}"
   rm -rf "${TMP_PATH}"
   rm -f "${SAVE_FILE_PATH}"
 
+  echo "Finishing with return value of ${ret}"
   exit "${ret}"
 }
 

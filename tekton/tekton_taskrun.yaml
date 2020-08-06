@@ -12,31 +12,40 @@ spec:
       - name: SYSDIG_SECRET_NAME
         value: sysdig-secret
       - name: IMAGE_URL
-        value: sysdiglabs/dummy-vuln-app:latest
+        value: docker.io/sysdiglabs/dummy-vuln-app:latest
+        # value: image-registry.openshift-image-registry.svc:5000/sysdig-inline-scan/example-image:initial
   taskSpec:
     params:
       - name: IMAGE_URL
-        description: the full image url
+        description: the full image url 
         default: latest
       - name: SYSDIG_SECRET_NAME
         description: The name of the secret that has the sysdig connection info
     steps:
       - name: inline-scan
         # FIXME: Update this to the final image location
-        image: sysdigdan/aio-secure-image-scanning:dev
+        image: quay.io/mhildenb/sysdig-inline-scan:1.1
         # give some extra oomph to the scanning process
-        # resources:
-        #   limits:
-        #     cpu: 1.5
-        #   requests:
-        #     cpu: 1
-        script: |
-           skopeo_image_analysis.sh -k ${SYSDIG_API_TOKEN} ${IMAGE_TAG}
-        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: 1.5
+          requests:
+            cpu: 1
+        args: 
+          - skopeo-analyze
+          - -k 
+          - $(SYSDIG_SECURE_API_TOKEN)
+          - -R
+          - /workspace
+          - -auth_file 
+          # $HOME is set by tekton.  Tekton puts all the tokens and authfiles available to 
+          # the current service account there
+          - "$(HOME)/.docker/config.json"
+          - $(IMAGE_TO_SCAN)
         env:
-        - name: IMAGE_TAG
+        - name: IMAGE_TO_SCAN
           value: $(inputs.params.IMAGE_URL)
-        - name: SYSDIG_API_TOKEN
+        - name: SYSDIG_SECURE_API_TOKEN
           valueFrom:
             secretKeyRef:
                 name: $(params.SYSDIG_SECRET_NAME)
