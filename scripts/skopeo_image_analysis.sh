@@ -416,7 +416,6 @@ print_scan_result_summary_message() {
           echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
       fi
   fi
-  printf "PDF report of the scan results can be generated with -R option.\n"
 }
 
 get_scan_result_pdf_by_digest() {
