@@ -35,6 +35,8 @@ spec:
           - skopeo-analyze
           - -k 
           - $(SYSDIG_SECURE_API_TOKEN)
+          - -R
+          - /workspace
           - -auth_file 
           # $HOME is set by tekton.  Tekton puts all the tokens and authfiles available to 
           # the current service account there
