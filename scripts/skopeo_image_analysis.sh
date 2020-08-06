@@ -62,7 +62,8 @@ EOF
 }
 
 main() {
-  trap 'cleanup' EXIT ERR SIGTERM
+  trap 'error' ERR
+  trap 'cleanup' EXIT SIGTERM
   trap 'interupt' SIGINT
 
   get_and_validate_options "$@"
@@ -117,7 +118,7 @@ get_and_validate_options() {
 
   # Check for invalid options
   if [[ ! $(which skopeo) ]]; then
-      printf '%s\n\n' 'ERROR - buildah is not installed or cannot be found in $PATH' >&2
+      printf '%s\n\n' 'ERROR - skopeo is not installed or cannot be found in $PATH' >&2
       display_usage >&2
       exit 1
   elif [[ "${#@}" -gt 1 ]]; then
@@ -400,57 +401,62 @@ get_scan_result_with_retries() {
 }
 
 print_scan_result_summary_message() {
-if [[ ! "${V_flag-""}"  && ! "${R_flag-""}" ]]; then
-    if [[ ! "${status}" = "pass" ]]; then
-        echo "Result Details: "
-        curl -s -k --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" "${SYSDIG_ANCHORE_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/check?tag=${SYSDIG_FULL_IMAGE_NAME}&detail=true"
-    fi
-fi
+  if [[ ! "${V_flag-""}"  && ! "${R_flag-""}" ]]; then
+      if [[ ! "${status}" = "pass" ]]; then
+          echo "Result Details: "
+          curl -s -k --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" "${SYSDIG_ANCHORE_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/check?tag=${SYSDIG_FULL_IMAGE_NAME}&detail=true"
+      fi
+  fi
 
-if [[ -z "${clean_flag:-}" ]]; then
-    ENCODED_TAG=$(urlencode ${SYSDIG_FULL_IMAGE_TAG})
-    if [[ "${o_flag:-}" ]]; then
-        echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/secure/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
-    else
-        echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
-    fi
-fi
-printf "PDF report of the scan results can be generated with -R option.\n"
+  if [[ -z "${clean_flag:-}" ]]; then
+      ENCODED_TAG=$(urlencode ${SYSDIG_FULL_IMAGE_TAG})
+      if [[ "${o_flag:-}" ]]; then
+          echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/secure/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
+      else
+          echo "View the full result @ ${SYSDIG_BASE_SCANNING_URL}/#/scanning/scan-results/${ENCODED_TAG}/${SYSDIG_IMAGE_DIGEST_SHA}/summaries"
+      fi
+  fi
+  printf "PDF report of the scan results can be generated with -R option.\n"
 }
 
 get_scan_result_pdf_by_digest() {
-date_format=$(date +'%Y-%m-%d')
-curl -sk --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" -o "${PDF_DIRECTORY}/${date_format}-${SYSDIG_FULL_IMAGE_NAME##*/}-scan-result.pdf" "${SYSDIG_SCANNING_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/report?tag=${SYSDIG_FULL_IMAGE_TAG}"
+  date_format=$(date +'%Y-%m-%d')
+  curl -sk --header "Content-Type: application/json" -H "Authorization: Bearer ${SYSDIG_API_TOKEN}" -o "${PDF_DIRECTORY}/${date_format}-${SYSDIG_FULL_IMAGE_NAME##*/}-scan-result.pdf" "${SYSDIG_SCANNING_URL}/images/${SYSDIG_IMAGE_DIGEST_SHA}/report?tag=${SYSDIG_FULL_IMAGE_TAG}"
 }
 
 urlencode() {
-# urlencode <string>
-local length="${#1}"
-for (( i = 0; i < length; i++ )); do
-    local c="${1:i:1}"
-    case $c in
-        [a-zA-Z0-9.~_-]) printf "$c" ;;
-        *) printf '%%%02X' "'$c"
-    esac
-done
+  # urlencode <string>
+  local length="${#1}"
+  for (( i = 0; i < length; i++ )); do
+      local c="${1:i:1}"
+      case $c in
+          [a-zA-Z0-9.~_-]) printf "$c" ;;
+          *) printf '%%%02X' "'$c"
+      esac
+  done
 }
 
 interupt() {
 cleanup 130
 }
 
+error() {
+  local ret=$?
+  echo "[$0] An error occured during the execution of the script"
+  cleanup ${ret}
+}
+
 cleanup() {
-local ret="$?"
-if [[ "${#@}" -ge 1 ]]; then
-    local ret="$1"
-fi
-set +e
+  local ret="${1:-${?}}"
 
-echo "Removing temporary folder created ${TMP_PATH}"
-rm -rf "${TMP_PATH}"
-rm -f "${SAVE_FILE_PATH}"
+  set +e
 
-exit "${ret}"
+  echo "Removing temporary folder created ${TMP_PATH}"
+  rm -rf "${TMP_PATH}"
+  rm -f "${SAVE_FILE_PATH}"
+
+  echo "Finishing with return value of ${ret}"
+  exit "${ret}"
 }
 
 main "$@"
