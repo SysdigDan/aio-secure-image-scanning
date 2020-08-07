@@ -22,9 +22,6 @@ main() {
     elif [[ "$1" == 'analyze' ]]; then
         setup_env
         exec image_analysis.sh "${@:2}"
-    elif [[ "$1" == 'buildah-analyze' ]]; then
-        setup_env
-        exec buildah_image_analysis.sh "${@:2}"
     elif [[ "$1" == 'skopeo-analyze' ]]; then
         setup_env
         exec skopeo_image_analysis.sh "${@:2}"
