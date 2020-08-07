@@ -1,14 +1,14 @@
 # Sysdig AIO Image Scanner
 The Sysdig AIO Image Scanner is built ontop of the anchore inline-scan ci-tools - https://github.com/anchore/ci-tools/blob/master/Dockerfile
 
-The intent of providing the AIO Image Scanner is to provide support for multiple container runtimes such as Docker and the Open Container Initiative $
+The intent of providing the AIO Image Scanner is to provide support for multiple container runtimes such as Docker and the Open Container Initiative (OCI) and without the need for container-in-container support.
 
 The Sysdig AIO Image Scanner can be executed using the following script -
 
 * skopeo-analyze
   - skopeo_image_analysis.sh - uses skopeo  (https://github.com/containers/skopeo)
 
-The provided scripts are useful for performing local analysis on container images (both from registries and locally built) and post the result of the$
+The provided scripts are useful for performing local analysis on container images (both from registries and locally built) and post the result of the analysis to Sysdig Secure.
 
 ## Minimum Requirements
 * Sysdig Secure > v2.5.0 access (with token)
@@ -17,7 +17,7 @@ The provided scripts are useful for performing local analysis on container image
 ---
 ### Options
 
-The script/docker image support other options that could be set
+The script/docker image supports other options that can be set during execution.
 
 #### PDF Output (-R)
 
