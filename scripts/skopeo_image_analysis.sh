@@ -29,6 +29,7 @@ AUTH_FILE=""
 DETAIL=false
 TMP_PATH="/tmp/sysdig"
 PDF_DIRECTORY=""
+SYSDIG_IMAGE_TAG=""
 
 display_usage() {
 cat << EOF
@@ -240,7 +241,16 @@ inspect_repo_image() {
     printf '%s\n\n' "SUCCESS - using full image name - ${SYSDIG_FULL_IMAGE_NAME}" >&2
   fi
 
-  SYSDIG_IMAGE_TAG=$(echo $REPO_INSPECT_JSON | jq -r '.RepoTags[0]')
+  # NOTE: We should be able to find the image tag in the RepoTags, though we don't know where in the list we'll
+  # find it
+  for TAG in $(echo $REPO_INSPECT_JSON | jq -r '.RepoTags | .[]' ); do
+    # see if the TAG we found matches the string after the last : in the IMAGE_TAG
+    if [[ "${IMAGE_TAG}" =~ ^.*":${TAG}"$ ]]; then
+      SYSDIG_IMAGE_TAG=${TAG}
+      break
+    fi
+  done
+
   if [[ -z $SYSDIG_IMAGE_TAG ]]; then
     printf '%s\n\n' "ERROR - issue finding image tag in repository for - ${IMAGE_TAG}" >&2
     display_usage >&2
