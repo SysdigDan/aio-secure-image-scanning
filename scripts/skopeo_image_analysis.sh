@@ -474,6 +474,7 @@ cleanup() {
   echo "Removing temporary folder created ${TMP_PATH}"
   rm -rf "${TMP_PATH}"
   rm -f "${SAVE_FILE_PATH}"
+  rm -f "/anchore-engine/image-analysis-archive.tgz"
 
   echo "Finishing with return value of ${ret}"
   exit "${ret}"
