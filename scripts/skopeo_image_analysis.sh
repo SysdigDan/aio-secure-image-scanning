@@ -42,7 +42,7 @@ using the -r <URL> option. This allows inline_analysis data to be persisted & ut
 Images should be built & tagged locally.
 
   Usage: ${0##*/} [ OPTIONS ] <FULL_IMAGE_TAG>
-  
+
     -k <TEXT>  [required] API token for Sysdig Scanning auth (ex: -k 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     -s <TEXT>  [optional] Sysdig Secure URL (ex: -s 'https://secure-sysdig.svc.cluster.local').
                If not specified, it will default to Sysdig Secure SaaS URL (https://secure.sysdig.com/).
@@ -54,9 +54,10 @@ Images should be built & tagged locally.
     -t <TEXT>  [optional] Specify timeout for image analysis in seconds. Defaults to 300s. (ex: -t 500)
     -R <PATH>  [optional] Download scan result pdf in a specified local directory (ex: -R /staging/reports)
     -C         [optional] Delete the image from Sysdig Secure if the scan fails
+    -o         [optional] Use this flag if targeting onprem sysdig installation
     -src_creds <TEXT>  [optional] Specify registry credentials. Use USERNAME[:PASSWORD] for accessing the registry
     -auth_file <PATH>  [optional] path of the authentication file, using auth.json.
-    
+
 EOF
 }
 
@@ -83,9 +84,9 @@ get_and_validate_options() {
     esac
   done
 
-  
+
   # parse options
-  while getopts ':k:s:a:d:i:f:m:t:x:y:R:Ch' option; do
+  while getopts ':k:s:a:d:i:f:m:t:x:y:R:Cho' option; do
       case "${option}" in
           k  ) k_flag=true; SYSDIG_API_TOKEN="${OPTARG}";;
           s  ) s_flag=true; SYSDIG_BASE_SCANNING_URL="${OPTARG%%}";;
@@ -94,6 +95,7 @@ get_and_validate_options() {
           i  ) i_flag=true; SYSDIG_IMAGE_ID="${OPTARG}";;
           f  ) f_flag=true; DOCKERFILE="/anchore-engine/$(basename ${OPTARG})";;
           m  ) m_flag=true; MANIFEST_FILE="/anchore-engine/$(basename ${OPTARG})";;
+          o  ) o_flag=true;;
           t  ) t_flag=true; TIMEOUT="${OPTARG}";;
           x  ) x_flag=true; SRC_CREDS="${OPTARG}";;
           y  ) y_flag=true; AUTH_FILE="${OPTARG}";;
@@ -181,7 +183,7 @@ get_and_validate_image() {
     elif [[ -z ${SRC_CREDS} ]] && [[ -n ${AUTH_FILE} ]]; then
       skopeo copy --src-tls-verify=false --authfile=${AUTH_FILE} "docker://${IMAGE_TAG}" "docker-archive:${SAVE_FILE_PATH}"
     elif [[ -z ${SRC_CREDS} ]] && [[ -z ${AUTH_FILE} ]]; then
-      skopeo copy --src-tls-verify=false --src-no-creds "docker://${IMAGE_TAG}" "docker-archive:${SAVE_FILE_PATH}" 
+      skopeo copy --src-tls-verify=false --src-no-creds "docker://${IMAGE_TAG}" "docker-archive:${SAVE_FILE_PATH}"
     else
       printf '%s\n\n' "ERROR - you can only use -src_creds or -auth_file" >&2
       display_usage >&2
