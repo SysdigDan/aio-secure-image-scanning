@@ -56,6 +56,7 @@ For more control and options, please refer to help documentation
         -t <TEXT>  [optional] Specify timeout for image analysis in seconds. Defaults to 300s. (ex: -t 500)
         -R <PATH>  [optional] Download scan result pdf in a specified local directory (ex: -R /staging/reports)
         -C         [optional] Delete the image from Sysdig Secure if the scan fails
+        -o         [optional] Use this flag if targeting onprem sysdig installation
         -src_creds <TEXT>  [optional] Specify registry credentials. Use USERNAME[:PASSWORD] for accessing the registry
         -auth_file <PATH>  [optional] path of the authentication file, using auth.json.
 ```
